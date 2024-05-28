@@ -41,7 +41,7 @@ public class MovementMath {
 
     //av is a number between
     public static float lerp(float num1, float num2, float av) {
-        final float FILTER = .00001f;
+        final float FILTER = .01f;
         if(num1<num2)
             if(num1>=num2-FILTER)
                 return num2;
