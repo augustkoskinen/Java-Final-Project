@@ -27,9 +27,12 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
     public JFrame frame;
     private MapPanel mapPanel;
     private UIPanel uiPanel;
+    private ColorPanel colorPanel;
 
     public int[][] intMap;
     public BufferedImage[][] imageMap;
+
+    public static ArrayList<ImageSquare> imageSquareList;
 
     private boolean mouseInPanel = false;
     public Vector2 mousePos;
@@ -43,7 +46,6 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
     private int headerBuffer;
     private float windowWidth;
     private int windowHeight;
-    private float windowRatioWH;
     private BufferedImage panelimg;
     public double deltaTime = 0;
     private Instant beginTime = Instant.now();
@@ -52,16 +54,18 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         this.frame = frame;
         mousePos = new Vector2();
 
+        imageSquareList = new ArrayList<>();
+
         camera = new Camera();
-        cameraPos =camera.campos;
+        cameraPos = camera.campos;
 
         windowWidth = ww;
         windowHeight = wh;
         headerBuffer = buffer;
-        windowRatioWH = ((float)ww)/wh;
 
         uiPanel = new UIPanel(this);
         mapPanel = new MapPanel(this);
+        colorPanel = new ColorPanel(this);
 
         super.addMouseMotionListener(this);
         super.addMouseWheelListener(this);
@@ -87,13 +91,15 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         camera.render(g);
         mapPanel.render(g, cameraPos);
         uiPanel.render(g, cameraPos);
+        colorPanel.render(g, cameraPos);
 
         repaint(1);
     }
 
     @Override
     public void mouseDragged(MouseEvent e) {
-        cameraPos = new Vector2(camStartPos.x+(mousePos.x-mouseStartPos.x), camStartPos.y+(mousePos.y-mouseStartPos.y));
+        if(e.getButton()==MouseEvent.BUTTON3)
+            cameraPos = new Vector2(camStartPos.x+(mousePos.x-mouseStartPos.x), camStartPos.y+(mousePos.y-mouseStartPos.y));
     }
 
     @Override
@@ -105,8 +111,15 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
 
     @Override
     public void mousePressed(MouseEvent e) {
-        mouseStartPos = new Vector2(mousePos.x, mousePos.y);
-        camStartPos = new Vector2(cameraPos.x,cameraPos.y);
+        if(e.getButton()==MouseEvent.BUTTON3) {
+            mouseStartPos = new Vector2(mousePos.x, mousePos.y);
+            camStartPos = new Vector2(cameraPos.x, cameraPos.y);
+        } else if(e.getButton()==MouseEvent.BUTTON1&&!mouseInPanel) {
+            int mposx = (int)(mousePos.x - cameraPos.x)/64;
+            int mposy = (int)(mousePos.y - cameraPos.y)/64 - 1;
+            if(mposx>-1&&mposy>-1&&mposx<intMap.length&&mposy<intMap[mposx].length)
+                intMap[mposx][mposy] = 1;
+        }
     }
 
     @Override
@@ -133,34 +146,79 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         mousePos.set(e.getPoint().x,e.getPoint().y);
     }
 
+    public class ColorPanel extends JPanel {
+        private EditorManager parent;
+        public Vector2 panelRawPos = new Vector2();
+        public Vector2 panelWH = new Vector2();
+
+        public ColorPanel(EditorManager p) {
+            parent = p;
+        }
+
+        public void render(Graphics g, Vector2 cameraPos) {
+            //imageSquareList;
+            for(int i = 0; i < imageSquareList.size(); i++) {
+                g.setColor(Color.WHITE);
+                g.drawRect(10,20+80*i,64,64);
+                if(imageSquareList.get(i).type==0) {
+                    g.setColor(new Color(imageSquareList.get(i).r,imageSquareList.get(i).g,imageSquareList.get(i).b));
+                    g.fillRect(9, 19+80*i, 62, 62);
+                } else {
+                    g.drawImage(imageSquareList.get(i).image,11, 21+80*i, 62, 62,null);
+                }
+            }
+        }
+    }
+
+    public class ImageSquare {
+        public int r = 0;
+        public int g = 0;
+        public int b = 0;
+        public BufferedImage image = null;
+        public int type = -1;
+
+        public ImageSquare(int r, int g, int b) {
+            type = 0;
+            this.r = r;
+            this.g = g;
+            this.b = b;
+        }
+        public ImageSquare(BufferedImage image) {
+            type = 1;
+            this.image = image;
+        }
+    }
+
     public class UIPanel extends JPanel {
         private EditorManager parent;
         public Vector2 panelTargetPos;
         public Vector2 panelRawPos;
         public Vector2 panelWH;
 
-        public ArrayList componentList;
+        public ArrayList<UIComponent> componentList;
+        public ArrayList<UIComponentTextField> TFcomponentList;
         private FileChooser fileChooser;
-        private UITextField widthTF;
-        private UITextField heightTF;
+        private UIComponentTextField widthTF;
+        private UIComponentTextField heightTF;
 
         public UIPanel(EditorManager p) {
             parent = p;
             panelimg = getAsset("UIPanel.png");
 
             componentList = new ArrayList<>();
+            TFcomponentList = new ArrayList<>();
 
             panelWH = new Vector2((int)((float)windowHeight/panelimg.getHeight()*panelimg.getWidth()), (windowHeight));
             panelTargetPos = new Vector2((windowWidth - (int)(panelWH.x*.25)), 0);
             panelRawPos = new Vector2((windowWidth - (int)(panelWH.x*.25)), 0);
 
             fileChooser = new FileChooser(this);
-            widthTF = new UITextField("3","Width", 2, -20, 80, 0, this);
-            heightTF = new UITextField("3","Height", 2, 20, 80, 1, this);
+            widthTF = new UIComponentTextField("3","Width", 2, -20, 80, 0, this);
+            heightTF = new UIComponentTextField("3","Height", 2, 20, 80, 1, this);
 
             componentList.add(fileChooser);
-            componentList.add(widthTF);
-            componentList.add(heightTF);
+            TFcomponentList.add(widthTF);
+            TFcomponentList.add(heightTF);
         }
 
         public void render(Graphics g, Vector2 cpos) {
@@ -174,38 +232,43 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             panelWH.set((int)(ratio*panelimg.getWidth()), (windowHeight));
             g.drawImage(panelimg,(int)(panelRawPos.x),(int)(panelRawPos.y),(int)panelWH.x,(int)panelWH.y,null);
 
-            /*
-            for (int i = 0; i < importedImages.size(); i++) {
-                g.drawImage(importedImages.get(i), (int)(panel.panelPos.x+ parent.windowRatioWH/2), (int)(panel.panelPos.y+10), null);
-            }
-            */
-
-            componentList.indexOf(fileChooser);
-            fileChooser.render(g, cpos, getInComponentList(componentList, fileChooser));
-            widthTF.render(g, cpos, getInComponentList(componentList, widthTF));
-            heightTF.render(g, cpos, getInComponentList(componentList, heightTF));
-        }
-
-        public int getInComponentList(ArrayList list, Object type) {
-            for(int i = 0; i < list.size(); i++) {
-                if(list.get(i).equals(type)) {
-                    return i;
-                }
-            }
-            return -1;
+            fileChooser.render(g, cpos, componentList.indexOf(fileChooser));
+            widthTF.render(g, cpos, TFcomponentList.indexOf(widthTF));
+            heightTF.render(g, cpos, TFcomponentList.indexOf(heightTF));
         }
     }
 
-    public static class FileChooser implements ActionListener {
+    public static class UIComponent {
+        public int x;
+        public int y;
+        public int width;
+        public int height;
+        public String name;
+
+        public UIComponent() {
+            x = 0;
+            y = 0;
+            width = 0;
+            height = 0;
+            name = "";
+        }
+
+        public UIComponent(String name, int x, int y, int width, int height) {
+            this.name = name;
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        }
+    }
+
+    public class FileChooser extends UIComponent implements ActionListener {
         private UIPanel panel;
         private JButton button;
-        public final int width = 100;
-        public final int height = 25;
         private ArrayList<BufferedImage> importedImages;
-        private int x = 0;
-        private int y = 0;
 
         public FileChooser(UIPanel p1) {
+            super("Select File",0,0,100,25);
             panel = p1;
 
             importedImages = new ArrayList<>();
@@ -219,12 +282,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         public void render(Graphics g, Vector2 cpos, int index) {
             int addy = panel.parent.MIN_SPACE;
             for (int i = 0; i < index; i++) {
-                if(panel.componentList.get(i).getClass().equals(FileChooser.class)) {
-                    addy += ((FileChooser) panel.componentList.get(i)).height;
-                } else if(panel.componentList.get(i).getClass().equals(UITextField.class)) {
-                    addy += ((UITextField) panel.componentList.get(i)).height;
-                }
-                addy += panel.parent.MIN_SPACE;
+                addy += panel.componentList.get(i).height + panel.parent.MIN_SPACE;
             }
 
             button.setBounds((int)(panel.panelRawPos.x + panel.parent.MIN_SPACE-7), panel.parent.MIN_SPACE + addy-7,width,height);
@@ -242,6 +300,8 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
                     File file = new File(fileChooser.getSelectedFile().getAbsolutePath());
                     try {
                         importedImages.add(ImageIO.read(file));
+                        panel.parent.imageSquareList.add(new ImageSquare(importedImages.getLast()));
+                        System.out.println(panel.parent.imageSquareList);
                     } catch (IOException ex) {
                         throw new RuntimeException(ex);
                     }
@@ -249,7 +309,8 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             }
         }
     }
-    public static class UITextField extends JTextField implements KeyListener {
+
+    public static class UIComponentTextField extends JTextField implements KeyListener {
         private UIPanel panel;
         private String name;
         private int addx;
@@ -258,7 +319,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         public final int width = 100;
         public final int height = 15;
 
-        public UITextField(String text, String n, int cols, int posx, int posy, int type, UIPanel p) {
+        public UIComponentTextField(String text, String n, int cols, int posx, int posy, int type, UIPanel p) {
             super(text, cols);
 
             name = n;
@@ -296,14 +357,9 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         public void keyReleased(KeyEvent e) {}
 
         public void render(Graphics g, Vector2 cpos, int index) {
-            int addy = panel.parent.MIN_SPACE;
+            int addy = panel.parent.MIN_SPACE+40;
             for (int i = 0; i < index; i++) {
-                if(panel.componentList.get(i).getClass().equals(FileChooser.class)) {
-                    addy += ((FileChooser) panel.componentList.get(i)).height;
-                } else if(panel.componentList.get(i).getClass().equals(UITextField.class)) {
-                    addy += ((UITextField) panel.componentList.get(i)).height;
-                }
-                addy += panel.parent.MIN_SPACE;
+                addy += panel.TFcomponentList.get(i).height+panel.parent.MIN_SPACE;
             }
 
             g.drawString(name, (int)(panel.panelRawPos.x + panel.parent.MIN_SPACE), panel.parent.MIN_SPACE + addy);
@@ -338,7 +394,12 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             for (int y = 0; y < intMap[0].length; y++) {
                 for (int x = 0; x < intMap.length; x++) {
                     g.setColor(Color.WHITE);
-                    g.drawRect((int)(pos.x+x*64*scrollScale+cpos.x),(int)(pos.y+y*64*scrollScale+cpos.y),(int)(64*scrollScale),(int)(64*scrollScale));
+                    if(intMap[x][y]!=0) {
+                        g.setColor(Color.BLUE);
+                        g.fillRect((int)(pos.x+x*64*scrollScale+cpos.x),(int)(pos.y+y*64*scrollScale+cpos.y),(int)(64*scrollScale),(int)(64*scrollScale));
+                    } else {
+                        g.drawRect((int)(pos.x+x*64*scrollScale+cpos.x),(int)(pos.y+y*64*scrollScale+cpos.y),(int)(63*scrollScale),(int)(63*scrollScale));
+                    }
                     g.setColor(Color.BLACK);
                 }
             }
