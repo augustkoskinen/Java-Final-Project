@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Objects;
 
 import editormanager.MovementMath.*;
@@ -92,6 +93,8 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
 
         //components
+        ((Graphics2D)g).setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
+
         camera.render(g);
         mapPanel.render(g, cameraPos);
         uiPanel.render(g, cameraPos);
@@ -101,7 +104,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             int mposx = (int)(((mousePos.x - cameraPos.x))/(64*scrollScale));
             int mposy = (int)(((mousePos.y - cameraPos.y - 64))/(64*scrollScale));
             if(mposx>-1&&mposy>-1&&mposx<intMap.length&&mposy<intMap[mposx].length) {
-                intMap[mposx][mposy] = 1;
+                intMap[mposx][mposy] = imageSquareList.indexOf(currentIS)+1;
                 imageMap[mposx][mposy] = currentIS;
             }
         }
@@ -221,6 +224,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         public ArrayList<UIComponentTextField> TFcomponentList;
         private FileChooser fileChooser;
         private UIComponentColorPicker colorChooser;
+        private ExportButton exportButton;
         private UIComponentTextField widthTF;
         private UIComponentTextField heightTF;
 
@@ -237,9 +241,11 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
 
             fileChooser = new FileChooser(this);
             colorChooser = new UIComponentColorPicker(this);
+            exportButton = new ExportButton(this);
             widthTF = new UIComponentTextField("3","Width", 2, -20, 80, 0, this);
             heightTF = new UIComponentTextField("3","Height", 2, 20, 80, 1, this);
 
+            componentList.add(exportButton);
             componentList.add(fileChooser);
             componentList.add(colorChooser);
             TFcomponentList.add(widthTF);
@@ -259,6 +265,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
 
             fileChooser.render(g, cpos, componentList.indexOf(fileChooser));
             colorChooser.render(g, cpos, componentList.indexOf(colorChooser));
+            exportButton.render(g, cpos, componentList.indexOf(exportButton));
             widthTF.render(g, cpos, TFcomponentList.indexOf(widthTF));
             heightTF.render(g, cpos, TFcomponentList.indexOf(heightTF));
         }
@@ -382,7 +389,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         public void keyReleased(KeyEvent e) {}
 
         public void render(Graphics g, Vector2 cpos, int index) {
-            int addy = panel.parent.MIN_SPACE+75;
+            int addy = panel.parent.MIN_SPACE+110;
             for (int i = 0; i < index; i++) {
                 addy += panel.TFcomponentList.get(i).height+panel.parent.MIN_SPACE;
             }
@@ -392,17 +399,59 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    public class ExportButton extends UIComponent {
+        private UIPanel panel;
+        private Button button;
+        public ExportButton(UIPanel p) {
+            super("Export",0,0,100,25);
+            button = new Button("Export");
+            panel = p;
+            panel.parent.add(button);
+        }
+        public void render(Graphics g, Vector2 cpos, int index) {
+            int addy = panel.parent.MIN_SPACE;
+            for (int i = 0; i < index; i++) {
+                addy += panel.componentList.get(i).height + panel.parent.MIN_SPACE;
+            }
+            button.setBounds((int)(panel.panelRawPos.x + panel.parent.MIN_SPACE-7), panel.parent.MIN_SPACE + addy-7,width,height);
+        }
+        private class Button extends JButton {
+            public Button(String text) {
+                super(text);
+                addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent arg0) {
+                        String text = "";
+                        text += "{\n";
+                        for(int y = 0; y < panel.parent.intMap.length; y++) {
+                            text += "{";
+                            for (int x = 0; x < panel.parent.intMap[0].length; x++) {
+                                text += panel.parent.intMap[x][y] + (x>=panel.parent.intMap[0].length-1 ? "" : ", ");
+                            }
+                            text += "}"+(y>=panel.parent.intMap.length-1 ? "" : ",")+"\n";
+                        }
+                        text += "}";
+
+                        java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new java.awt.datatransfer.StringSelection(text), null);
+                    }
+                });
+            }
+        }
+    }
+
     public class UIComponentColorPicker extends UIComponent {
         public UIPanel panel;
         public ColorPickerButton button1;
-        //public AddColorButton button2;
+        public RemoveButton button2;
 
         public UIComponentColorPicker(UIPanel panel) {
             super("Add Color",0,0,100,25);
             this.panel = panel;
             button1 = new ColorPickerButton("Add Color", Color.black);
+            button2 = new RemoveButton("Remove Color");
 
             panel.parent.add(button1);
+            panel.parent.add(button2);
         }
 
         public void render(Graphics g, Vector2 cpos, int index) {
@@ -411,6 +460,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
                 addy += panel.componentList.get(i).height + panel.parent.MIN_SPACE;
             }
             button1.setBounds((int)(panel.panelRawPos.x + panel.parent.MIN_SPACE-7), panel.parent.MIN_SPACE + addy-7,width,height);
+            button2.setBounds((int)(panel.panelRawPos.x + 88 + panel.parent.MIN_SPACE-7), panel.parent.MIN_SPACE + addy-7,112,height);
         }
 
         public class ColorPickerButton extends JButton {
@@ -428,7 +478,18 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         setSelectedColor(colorChooser.getColor());
-                        imageSquareList.add(new ImageSquare(getSelectedColor().getRed(),getSelectedColor().getGreen(),getSelectedColor().getBlue()));
+
+                        boolean canAddColor = true;
+                        for(int i = 0; i < panel.parent.imageSquareList.size(); i++)
+                            if(panel.parent.imageSquareList.get(i).type==0&&
+                                panel.parent.imageSquareList.get(i).r==current.getRed()&&
+                                panel.parent.imageSquareList.get(i).g==current.getGreen()&&
+                                panel.parent.imageSquareList.get(i).b==current.getBlue()
+                            )
+                                canAddColor = false;
+
+                        if(panel.parent.imageSquareList.size() < 6&&canAddColor)
+                            imageSquareList.add(new ImageSquare(getSelectedColor().getRed(),getSelectedColor().getGreen(),getSelectedColor().getBlue()));
                         dialog.setVisible(false);
                     }
                 }, new ActionListener() {
@@ -459,6 +520,20 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
                 if (newColor == null) return;
 
                 current = newColor;
+            }
+        }
+
+        public class RemoveButton extends JButton {
+            public RemoveButton(String text) {
+                super(text);
+
+                addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent arg0) {
+                        if(panel.parent.imageSquareList.size() > 0)
+                            panel.parent.imageSquareList.removeLast();
+                    }
+                });
             }
         }
     }
@@ -498,8 +573,10 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
                         } else if(imageMap[x][y].type==1) {
                             g.drawImage(imageMap[x][y].image,(int) (pos.x + x * 64 * scrollScale + cpos.x), (int) (pos.y + y * 64 * scrollScale + cpos.y), (int) (64 * scrollScale), (int) (64 * scrollScale),null);
                         }
+                        g.setColor(Color.BLACK);
+                        g.drawRect((int)(pos.x+x*64*scrollScale+cpos.x),(int)(pos.y+y*64*scrollScale+cpos.y),(int)(64*scrollScale),(int)(64*scrollScale));
                     } else {
-                        g.drawRect((int)(pos.x+x*64*scrollScale+cpos.x),(int)(pos.y+y*64*scrollScale+cpos.y),(int)(63*scrollScale),(int)(63*scrollScale));
+                        g.drawRect((int)(pos.x+x*64*scrollScale+cpos.x),(int)(pos.y+y*64*scrollScale+cpos.y),(int)(64*scrollScale),(int)(64*scrollScale));
                     }
                     g.setColor(Color.BLACK);
                 }
@@ -512,8 +589,6 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         public Camera() {
             campos = new Vector2(0,0);
         }
-        public void render(Graphics g) {
-            //g.translate((int)-campos.x,(int)-campos.y);
-        }
+        public void render(Graphics g) {}
     }
 }
