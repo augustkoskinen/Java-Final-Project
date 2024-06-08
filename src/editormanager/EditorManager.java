@@ -24,9 +24,11 @@ import static java.lang.Integer.MIN_VALUE;
 import static java.lang.Integer.parseInt;
 
 public class EditorManager extends JPanel implements MouseMotionListener, MouseInputListener, MouseWheelListener {
+    //consts
     public final int MIN_SPACE = 10;
     public final int HEADER_H = 28;
 
+    //components
     public JFrame frame;
     private MapPanel mapPanel;
     private UIPanel uiPanel;
@@ -38,6 +40,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
     public static ArrayList<ImageSquare> imageSquareList;
     public ImageSquare currentIS;
 
+    //mouse vars
     public boolean mouseDown = false;
     private boolean mouseInPanel = false;
     public Vector2 mousePos;
@@ -45,6 +48,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
     private Vector2 mouseStartPos;
     private Vector2 camStartPos;
 
+    //cam vars
     public Camera camera;
     public Vector2 cameraPos;
 
@@ -68,6 +72,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         windowHeight = wh;
         headerBuffer = buffer;
 
+        //components
         uiPanel = new UIPanel(this);
         mapPanel = new MapPanel(this);
         colorPanel = new ColorPanel(this);
@@ -77,22 +82,25 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         super.addMouseListener(this);
     }
 
+    //rendering components
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
         setBackground(Color.BLACK);
         windowWidth = frame.getWidth();
         windowHeight = frame.getHeight()-headerBuffer;
 
+        //deltatime
         deltaTime = 1000000000/(float)Duration.between(beginTime, Instant.now()).toNanos();
         beginTime = Instant.now();
 
+        //check if mouse is in panel
         if(!mouseInPanel&&mousePos.x>(int)uiPanel.panelRawPos.x) {
             mouseInPanel = true;
         } else if (mouseInPanel&&mousePos.x<(int)uiPanel.panelRawPos.x) {
             mouseInPanel = false;
         }
 
-        //components
+        //component drawing
         ((Graphics2D)g).setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
 
         camera.render(g);
@@ -100,6 +108,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         uiPanel.render(g, cameraPos);
         colorPanel.render(g, cameraPos);
 
+        //check if painting to map
         if(mouseDown&&!mouseInPanel) {
             int mposx = (int)(((mousePos.x - cameraPos.x))/(64*scrollScale));
             int mposy = (int)(((mousePos.y - cameraPos.y - 64))/(64*scrollScale));
@@ -109,15 +118,18 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             }
         }
 
+        //repaint every millis
         repaint(1);
     }
 
+    //pan func
     @Override
     public void mouseDragged(MouseEvent e) {
         if(e.getButton()==MouseEvent.BUTTON3)
             cameraPos = new Vector2(camStartPos.x+(mousePos.x-mouseStartPos.x), camStartPos.y+(mousePos.y-mouseStartPos.y));
     }
 
+    //scroll func
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
         if(e.getPreciseWheelRotation()!=0) {
@@ -126,6 +138,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    //draw func
     @Override
     public void mousePressed(MouseEvent e) {
         if(e.getButton()==MouseEvent.BUTTON3) {
@@ -137,30 +150,27 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
     }
 
     @Override
-    public void mouseClicked(MouseEvent e) {
+    public void mouseClicked(MouseEvent e) {}
 
-    }
+    @Override
+    public void mouseEntered(MouseEvent e) {}
 
+    @Override
+    public void mouseExited(MouseEvent e) {}
+
+    //release mouse
     @Override
     public void mouseReleased(MouseEvent e) {
         mouseDown = false;
     }
 
-    @Override
-    public void mouseEntered(MouseEvent e) {
-
-    }
-
-    @Override
-    public void mouseExited(MouseEvent e) {
-
-    }
-
+    //update mouse pos
     @Override
     public void mouseMoved(MouseEvent e) {
         mousePos.set(e.getPoint().x,e.getPoint().y);
     }
 
+    //panel for color selection
     public class ColorPanel extends JPanel {
         private EditorManager parent;
         public Vector2 panelRawPos = new Vector2();
@@ -172,7 +182,8 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
 
         public void render(Graphics g, Vector2 cameraPos) {
-            //imageSquareList;
+            //draw each color
+
             for(int i = 0; i < imageSquareList.size(); i++) {
                 if(chosen == i)
                     g.setColor(Color.WHITE);
@@ -195,6 +206,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    //class for color/images to draw
     public class ImageSquare {
         public int r = 0;
         public int g = 0;
@@ -214,12 +226,14 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    //class for ui panel + buttons
     public class UIPanel extends JPanel {
         private EditorManager parent;
         public Vector2 panelTargetPos;
         public Vector2 panelRawPos;
         public Vector2 panelWH;
 
+        //buttons
         public ArrayList<UIComponent> componentList;
         public ArrayList<UIComponentTextField> TFcomponentList;
         private FileChooser fileChooser;
@@ -239,12 +253,14 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             panelTargetPos = new Vector2((windowWidth - (int)(panelWH.x*.25)), 0);
             panelRawPos = new Vector2((windowWidth - (int)(panelWH.x*.25)), 0);
 
+            //create components
             fileChooser = new FileChooser(this);
             colorChooser = new UIComponentColorPicker(this);
             exportButton = new ExportButton(this);
             widthTF = new UIComponentTextField("3","Width", 2, -20, 80, 0, this);
             heightTF = new UIComponentTextField("3","Height", 2, 20, 80, 1, this);
 
+            //add componenets to be drawn
             componentList.add(exportButton);
             componentList.add(fileChooser);
             componentList.add(colorChooser);
@@ -252,17 +268,19 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             TFcomponentList.add(heightTF);
         }
 
+        //draw components
         public void render(Graphics g, Vector2 cpos) {
-            //panel
             parent.mousePos.set(MouseInfo.getPointerInfo().getLocation().x,MouseInfo.getPointerInfo().getLocation().y);
             panelRawPos.set(MovementMath.lerp(panelRawPos.x,panelTargetPos.x,4*(1f/(float)deltaTime)),MovementMath.lerp(panelRawPos.y,panelTargetPos.y,1f));
 
+            //draw panel
             float ratio = (float)windowHeight/panelimg.getHeight();
             if(mouseInPanel) panelTargetPos.set((windowWidth - panelWH.x), 0);
             else panelTargetPos.set((windowWidth - (int)(panelWH.x*.25)), 0);
             panelWH.set((int)(ratio*panelimg.getWidth()), (windowHeight));
             g.drawImage(panelimg,(int)(panelRawPos.x),(int)(panelRawPos.y),(int)panelWH.x,(int)panelWH.y,null);
 
+            //draw componenets
             fileChooser.render(g, cpos, componentList.indexOf(fileChooser));
             colorChooser.render(g, cpos, componentList.indexOf(colorChooser));
             exportButton.render(g, cpos, componentList.indexOf(exportButton));
@@ -271,6 +289,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    //general class for ui components
     public static class UIComponent {
         public int x;
         public int y;
@@ -295,6 +314,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    //class for file chooser button
     public class FileChooser extends UIComponent implements ActionListener {
         private UIPanel panel;
         private JButton button;
@@ -312,6 +332,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             panel.parent.add(button);
         }
 
+        //draw button
         public void render(Graphics g, Vector2 cpos, int index) {
             int addy = panel.parent.MIN_SPACE;
             for (int i = 0; i < index; i++) {
@@ -321,6 +342,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             button.setBounds((int)(panel.panelRawPos.x + panel.parent.MIN_SPACE-7), panel.parent.MIN_SPACE + addy-7,width,height);
         }
 
+        //file selection
         @Override
         public void actionPerformed(ActionEvent e) {
             if (e.getSource() == button) {
@@ -328,7 +350,8 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
                 fileChooser.setCurrentDirectory(new File("."));
 
                 int response = fileChooser.showOpenDialog(null); //select file to open
-                
+
+                //add file to image list
                 if (response == JFileChooser.APPROVE_OPTION) {
                     File file = new File(fileChooser.getSelectedFile().getAbsolutePath());
                     try {
@@ -342,6 +365,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    //class for text field
     public static class UIComponentTextField extends JTextField implements KeyListener {
         private UIPanel panel;
         private String name;
@@ -368,6 +392,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         @Override
         public void keyTyped(KeyEvent e) {}
 
+        //check to adjust map size
         @Override
         public void keyPressed(KeyEvent e) {
             boolean entered = e.getKeyCode() == KeyEvent.VK_ENTER;
@@ -388,6 +413,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         @Override
         public void keyReleased(KeyEvent e) {}
 
+        //draw component
         public void render(Graphics g, Vector2 cpos, int index) {
             int addy = panel.parent.MIN_SPACE+110;
             for (int i = 0; i < index; i++) {
@@ -399,15 +425,19 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    //button for exporting map
     public class ExportButton extends UIComponent {
         private UIPanel panel;
         private Button button;
+
         public ExportButton(UIPanel p) {
             super("Export",0,0,100,25);
             button = new Button("Export");
             panel = p;
             panel.parent.add(button);
         }
+
+        //draw component
         public void render(Graphics g, Vector2 cpos, int index) {
             int addy = panel.parent.MIN_SPACE;
             for (int i = 0; i < index; i++) {
@@ -415,12 +445,15 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             }
             button.setBounds((int)(panel.panelRawPos.x + panel.parent.MIN_SPACE-7), panel.parent.MIN_SPACE + addy-7,width,height);
         }
+
+        //button
         private class Button extends JButton {
             public Button(String text) {
                 super(text);
                 addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent arg0) {
+                        //copy map to clipboard
                         String text = "";
                         text += "{\n";
                         for(int y = 0; y < panel.parent.intMap.length; y++) {
@@ -439,6 +472,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    //class for picking a color
     public class UIComponentColorPicker extends UIComponent {
         public UIPanel panel;
         public ColorPickerButton button1;
@@ -454,6 +488,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             panel.parent.add(button2);
         }
 
+        //draw component
         public void render(Graphics g, Vector2 cpos, int index) {
             int addy = panel.parent.MIN_SPACE;
             for (int i = 0; i < index; i++) {
@@ -463,6 +498,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             button2.setBounds((int)(panel.panelRawPos.x + 88 + panel.parent.MIN_SPACE-7), panel.parent.MIN_SPACE + addy-7,112,height);
         }
 
+        //button to choose a color
         public class ColorPickerButton extends JButton {
             private Color current;
             private JColorChooser colorChooser;
@@ -475,8 +511,10 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
                 colorChooser = new JColorChooser(Color.black);
                 colorChooser.setPreviewPanel(new JPanel());
                 dialog = JColorChooser.createDialog(panel.parent, "Choose a color", true, colorChooser, new ActionListener() {
+                    //choose ok case
                     @Override
                     public void actionPerformed(ActionEvent e) {
+                        //add+save color if it satisfies conditions
                         setSelectedColor(colorChooser.getColor());
 
                         boolean canAddColor = true;
@@ -493,8 +531,10 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
                         dialog.setVisible(false);
                     }
                 }, new ActionListener() {
+                    //choose no case
                     @Override
                     public void actionPerformed(ActionEvent e) {
+                        //save color
                         setSelectedColor(colorChooser.getColor());
                         dialog.setVisible(false);
                     }
@@ -523,6 +563,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             }
         }
 
+        //button to remove a color
         public class RemoveButton extends JButton {
             public RemoveButton(String text) {
                 super(text);
@@ -538,6 +579,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    //get an image from a path
     public static BufferedImage getAsset(String path){
         try {
             return ImageIO.read(new File("assets/"+path));
@@ -546,9 +588,11 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    //class for the map
     public class MapPanel {
         private Vector2 pos;
         private EditorManager parent;
+
         public MapPanel(EditorManager parent) {
             mouseStartPos = new Vector2();
             camStartPos = new Vector2();
@@ -558,10 +602,14 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             intMap = new int[3][3];
             imageMap = new ImageSquare[3][3];
         }
+
+        //adjust size
         public void adjustMap(int rows, int cols) {
             intMap = new int[rows][cols];
             imageMap = new ImageSquare[rows][cols];
         }
+
+        //draw map lines + colors/images
         public void render(Graphics g, Vector2 cpos) {
             for (int y = 0; y < imageMap[0].length; y++) {
                 for (int x = 0; x < imageMap.length; x++) {
@@ -584,6 +632,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    //general class for the camera
     public class Camera {
         public Vector2 campos;
         public Camera() {

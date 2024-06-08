@@ -1,6 +1,7 @@
 package editormanager;
 
 public class MovementMath {
+    //class for 2d vectors and their general attributes
     public static class Vector2 {
         public float x = 0;
         public float y = 0;
@@ -39,8 +40,9 @@ public class MovementMath {
         }
     }
 
-    //av is a number between
+    //lerp function
     public static float lerp(float num1, float num2, float av) {
+        //av is a number between
         final float FILTER = .01f;
         if(num1<num2)
             if(num1>=num2-FILTER)
