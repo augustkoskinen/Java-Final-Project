@@ -65,6 +65,9 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
 
         imageSquareList = new ArrayList<>();
 
+        //errase png
+        imageSquareList.add(new ImageSquare(getAsset("erase.png")));
+
         camera = new Camera();
         cameraPos = camera.campos;
 
@@ -113,11 +116,13 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             int mposx = (int)(((mousePos.x - cameraPos.x))/(64*scrollScale));
             int mposy = (int)(((mousePos.y - cameraPos.y - 64))/(64*scrollScale));
             if(mposx>-1&&mposy>-1&&mposx<intMap.length&&mposy<intMap[mposx].length) {
-                intMap[mposx][mposy] = imageSquareList.indexOf(currentIS)+1;
-                imageMap[mposx][mposy] = currentIS;
+                intMap[mposx][mposy] = imageSquareList.indexOf(currentIS);
+                if(imageSquareList.indexOf(currentIS)==0) //errase case
+                    imageMap[mposx][mposy] = null;
+                else
+                    imageMap[mposx][mposy] = currentIS;
             }
         }
-
         //repaint every millis
         repaint(1);
     }
@@ -241,6 +246,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         private ExportButton exportButton;
         private UIComponentTextField widthTF;
         private UIComponentTextField heightTF;
+        public ClearMap clearMapButton;
 
         public UIPanel(EditorManager p) {
             parent = p;
@@ -257,6 +263,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             fileChooser = new FileChooser(this);
             colorChooser = new UIComponentColorPicker(this);
             exportButton = new ExportButton(this);
+            clearMapButton = new ClearMap(this);
             widthTF = new UIComponentTextField("3","Width", 2, -20, 80, 0, this);
             heightTF = new UIComponentTextField("3","Height", 2, 20, 80, 1, this);
 
@@ -264,6 +271,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             componentList.add(exportButton);
             componentList.add(fileChooser);
             componentList.add(colorChooser);
+            componentList.add(clearMapButton);
             TFcomponentList.add(widthTF);
             TFcomponentList.add(heightTF);
         }
@@ -284,6 +292,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
             fileChooser.render(g, cpos, componentList.indexOf(fileChooser));
             colorChooser.render(g, cpos, componentList.indexOf(colorChooser));
             exportButton.render(g, cpos, componentList.indexOf(exportButton));
+            clearMapButton.render(g, cpos, componentList.indexOf(clearMapButton));
             widthTF.render(g, cpos, TFcomponentList.indexOf(widthTF));
             heightTF.render(g, cpos, TFcomponentList.indexOf(heightTF));
         }
@@ -365,6 +374,39 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
         }
     }
 
+    //class for a map clearing button
+    public class ClearMap extends UIComponent {
+        private UIPanel panel;
+        private JButton button;
+
+        public ClearMap(UIPanel p1) {
+            super("Clear Map",0,0,100,25);
+            panel = p1;
+
+            button = new JButton("Clear Map");
+
+            button.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    intMap = new int[intMap.length][intMap[0].length];
+                    imageMap = new ImageSquare[intMap.length][intMap[0].length];
+                }
+            });
+
+            panel.parent.add(button);
+        }
+
+        //draw the button
+        public void render(Graphics g, Vector2 cpos, int index) {
+            int addy = panel.parent.MIN_SPACE;
+            for (int i = 0; i < index; i++) {
+                addy += panel.componentList.get(i).height + panel.parent.MIN_SPACE;
+            }
+
+            button.setBounds((int)(panel.panelRawPos.x + panel.parent.MIN_SPACE-7), panel.parent.MIN_SPACE + addy-7,width,height);
+        }
+    }
+
     //class for text field
     public static class UIComponentTextField extends JTextField implements KeyListener {
         private UIPanel panel;
@@ -415,7 +457,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
 
         //draw component
         public void render(Graphics g, Vector2 cpos, int index) {
-            int addy = panel.parent.MIN_SPACE+110;
+            int addy = panel.parent.MIN_SPACE+140;
             for (int i = 0; i < index; i++) {
                 addy += panel.TFcomponentList.get(i).height+panel.parent.MIN_SPACE;
             }
@@ -571,7 +613,7 @@ public class EditorManager extends JPanel implements MouseMotionListener, MouseI
                 addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent arg0) {
-                        if(panel.parent.imageSquareList.size() > 0)
+                        if(panel.parent.imageSquareList.size() > 1)
                             panel.parent.imageSquareList.removeLast();
                     }
                 });
